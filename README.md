@@ -16,6 +16,8 @@
    <br>Keys correspond to given
   <img width="410" height="434" alt="image" src="https://github.com/user-attachments/assets/73d58d23-4f81-4119-af8b-aad7ce177be5" />
 
+> [!NOTE]
+> There another release if you don`t want to console be opened and stay in trackbar, app will go to system tray from start
 ---
 #
 # *Currently working on possibility to make custom layouts*
