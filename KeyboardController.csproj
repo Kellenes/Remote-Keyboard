@@ -28,6 +28,8 @@
 	<IncludeNativeLibrariesForSelfExtract>true</IncludeNativeLibrariesForSelfExtract>
 	<IsTransformWebConfigDisabled>true</IsTransformWebConfigDisabled>
 	<GenerateStaticWebAssetsManifest>false</GenerateStaticWebAssetsManifest>
+
+	<BuiltInComInteropSupport>true</BuiltInComInteropSupport>
   </PropertyGroup>
 
   <ItemGroup>
