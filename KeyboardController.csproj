@@ -37,7 +37,7 @@
 	<TrimmerRootAssembly Include="Microsoft.AspNetCore.Server.Kestrel.Core" />
 
 	<PackageReference Include="InputSimulatorStandard" Version="1.0.0" />
-	<Content Update="wwwroot\**" CopyToPublishDirectory="PreserveNewest" />
+	<Content Update="wwwroot\**" CopyToPublishDirectory="PreserveNewest" CopyToOutputDirectory="PreserveNewest" />
 	<EmbeddedResource Include="favicon.ico" />
   </ItemGroup>
 
