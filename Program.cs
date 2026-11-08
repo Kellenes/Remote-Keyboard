@@ -3,13 +3,27 @@ using System.Text;
 using KeyboardController.Services;
 using KeyboardController.UI;
 
+// Only one copy may run: a second one (autostart + manual launch) would fight for the port.
+// "Local\" scope makes the mutex per Windows session. initiallyOwned is false so that
+// no thread owns the mutex (the code after 'await' may continue on another thread).
+using var singleInstance = new Mutex(false, @"Local\RemoteKeyboardController", out bool isFirstInstance);
+if (!isFirstInstance) return;
+
 // AppContext.BaseDirectory is the folder of the .exe and works with PublishSingleFile.
 // Do not use the current directory: it differs when the app is started via a shortcut.
 var settingsPath = Path.Combine(AppContext.BaseDirectory, SettingsLoader.FileName);
 var settings = SettingsLoader.Load(settingsPath);
 int port = settings.Port;
 
-var builder = WebApplication.CreateBuilder(args);
+bool autostart = args.Contains("--autostart");
+
+// Autostart often runs the app with another working directory (for example C:\Windows\System32),
+// and Kestrel looks for wwwroot relative to the content root, so pin it to the .exe folder.
+var builder = WebApplication.CreateBuilder(new WebApplicationOptions
+{
+    Args = args.Where(a => a != "--autostart").ToArray(),
+    ContentRootPath = AppContext.BaseDirectory
+});
 builder.Logging.ClearProviders();
 builder.Logging.AddFilter("Microsoft", LogLevel.Warning);
 builder.Logging.AddFilter("System", LogLevel.Warning);
