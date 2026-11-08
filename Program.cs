@@ -1,6 +1,7 @@
 ﻿using System.Net.WebSockets;
 using System.Text;
 using KeyboardController.Services;
+using KeyboardController.UI;
 
 // AppContext.BaseDirectory is the folder of the .exe and works with PublishSingleFile.
 // Do not use the current directory: it differs when the app is started via a shortcut.
@@ -51,7 +52,7 @@ app.Map("/ws", async context =>
     }
 
     using var webSocket = await context.WebSockets.AcceptWebSocketAsync();
-    Console.WriteLine("[+] Device connected.");
+    AppLog.Write("[+] Device connected.");
 
     var buffer = new byte[1024 * 4];
     try
@@ -71,9 +72,14 @@ app.Map("/ws", async context =>
     catch { }
     finally
     {
-        Console.WriteLine("[-] Device disconnected.");
+        AppLog.Write("[-] Device disconnected.");
     }
 });
+
+// Tray init
+var trayService = new TrayService();
+trayService.Initialize();
+AppLog.Write("Icon added to system tray");
 
 // Start the web server
 try
@@ -83,8 +89,8 @@ try
 catch (IOException ex)
 {
     // Kestrel throws an IOException subclass when the port is already in use
-    Console.WriteLine($"[!] Cannot start the server on port {port}: {ex.Message}");
-    Console.WriteLine($"[!] Change \"port\" in {SettingsLoader.FileName} and restart.");
+    AppLog.Write($"[!] Cannot start the server on port {port}: {ex.Message}");
+    AppLog.Write($"[!] Change \"port\" in {SettingsLoader.FileName} and restart.");
     return;
 }
 
@@ -92,7 +98,7 @@ string? publicUrl = null;
 
 if (settings.PublicUrl != null)
 {
-    Console.WriteLine($"[*] Checking custom URL: {settings.PublicUrl}");
+    AppLog.Write($"[*] Checking custom URL: {settings.PublicUrl}");
 
     bool alive = await UrlVerifier.IsOurServerAsync(
         settings.PublicUrl,
@@ -106,11 +112,11 @@ if (settings.PublicUrl != null)
     if (alive)
     {
         publicUrl = settings.PublicUrl;
-        Console.WriteLine("[+] Custom URL leads to this app");
+        AppLog.Write("[+] Custom URL leads to this app");
     }
     else
     {
-        Console.WriteLine("[!] Custom URL does not lead to this app, falling back to Localtunnel");
+        AppLog.Write("[!] Custom URL does not lead to this app, falling back to Localtunnel");
     }
 }
 
@@ -118,26 +124,22 @@ if (settings.PublicUrl != null)
 if (publicUrl == null)
 {
     var lt = new TunnelService();
-    Console.WriteLine("[*] Connecting to Localtunnel...");
+    AppLog.Write("[*] Connecting to Localtunnel...");
     publicUrl = await lt.StartAsync(port, "pad-" + Environment.MachineName.ToLower());
 }
 
 if (!string.IsNullOrEmpty(publicUrl))
 {
     Console.ForegroundColor = ConsoleColor.Green;
-    Console.WriteLine($"\n==========================================");
-    Console.WriteLine($" Link: {publicUrl}");
-    Console.WriteLine($"==========================================\n");
+    AppLog.Write($"\n==========================================");
+    AppLog.Write($" Link: {publicUrl}");
+    AppLog.Write($"==========================================\n");
     Console.ResetColor();
 }
 else
 {
-    Console.WriteLine($"[!] No public link. Local address: http://localhost:{port}");
+    AppLog.Write($"[!] No public link. Local address: http://localhost:{port}");
 }
 
-// Tray icon initialization
-var trayService = new TrayService();
-trayService.Initialize(publicUrl ?? $"http://localhost:{port}");
-Console.WriteLine("[*] Icon added to system tray");
 
 await app.WaitForShutdownAsync();

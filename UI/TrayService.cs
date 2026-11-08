@@ -1,13 +1,14 @@
 ﻿using System.Reflection;
 using System.Runtime.InteropServices;
+using KeyboardController.Services;
 
-namespace KeyboardController.Services;
+namespace KeyboardController.UI;
 
 public class TrayService
 {
     // --- Win32 API ---
     [DllImport("user32.dll")]
-    private static extern bool OpenClipboard(IntPtr hWndNewOwner);
+    private static extern bool OpenClipboard(nint hWndNewOwner);
 
     [DllImport("user32.dll")]
     private static extern bool CloseClipboard();
@@ -16,28 +17,27 @@ public class TrayService
     private static extern bool EmptyClipboard();
 
     [DllImport("user32.dll")]
-    private static extern IntPtr SetClipboardData(uint uFormat, IntPtr hMem);
+    private static extern nint SetClipboardData(uint uFormat, nint hMem);
 
     [DllImport("kernel32.dll")]
-    private static extern IntPtr GlobalAlloc(uint uFlags, UIntPtr dwBytes);
+    private static extern nint GlobalAlloc(uint uFlags, nuint dwBytes);
 
     [DllImport("kernel32.dll")]
-    private static extern IntPtr GlobalLock(IntPtr hMem);
+    private static extern nint GlobalLock(nint hMem);
 
     [DllImport("kernel32.dll")]
-    private static extern bool GlobalUnlock(IntPtr hMem);
+    private static extern bool GlobalUnlock(nint hMem);
 
     private const uint CF_UNICODETEXT = 13;
     private const uint GMEM_MOVEABLE = 0x0002;
 
 
     private NotifyIcon? _notifyIcon;
+    private LogForm? _logForm;
     private string _publicUrl = string.Empty;
 
-    public void Initialize(string initialUrl)
+    public void Initialize()
     {
-        _publicUrl = initialUrl;
-
         var trayThread = new Thread(() =>
         {
             _notifyIcon = new NotifyIcon
@@ -47,16 +47,27 @@ public class TrayService
                 Visible = true
             };
 
+            // The form MUST be created on this thread, because this thread runs the message loop
+            _logForm = new LogForm();
+
             var contextMenu = new ContextMenuStrip();
 
+            var showLogsItem = new ToolStripMenuItem("Show logs", null, (_, _) => ShowLogWindow());
             var copyLinkItem = new ToolStripMenuItem("Copy link", null, (_, _) => CopyLinkToClipboard());
             var exitItem = new ToolStripMenuItem("Exit", null, (_, _) => ExitApplication());
 
+            contextMenu.Items.Add(showLogsItem);
             contextMenu.Items.Add(copyLinkItem);
             contextMenu.Items.Add(new ToolStripSeparator());
             contextMenu.Items.Add(exitItem);
 
             _notifyIcon.ContextMenuStrip = contextMenu;
+
+            // Double click on the tray icon also opens the logs
+            _notifyIcon.DoubleClick += (_, _) => ShowLogWindow();
+
+            // Open the window right at startup
+            _logForm.Show();
 
             Application.Run();
         });
@@ -64,6 +75,24 @@ public class TrayService
         trayThread.SetApartmentState(ApartmentState.STA);
         trayThread.IsBackground = true;
         trayThread.Start();
+    }
+
+    // Called later from Program.cs when the tunnel URL is ready
+    public void SetUrl(string url)
+    {
+        _publicUrl = url;
+    }
+
+    private void ShowLogWindow()
+    {
+        if (_logForm == null) return;
+
+        if (!_logForm.Visible)
+            _logForm.Show();
+
+        // Restore if minimized and bring to front
+        _logForm.WindowState = FormWindowState.Normal;
+        _logForm.Activate();
     }
 
     private static Icon LoadAppIcon()
@@ -105,17 +134,17 @@ public class TrayService
 
     private static bool SetWin32ClipboardText(string text)
     {
-        if (!OpenClipboard(IntPtr.Zero)) return false;
+        if (!OpenClipboard(nint.Zero)) return false;
 
         try
         {
             EmptyClipboard();
             int bytes = (text.Length + 1) * 2;
-            IntPtr hGlobal = GlobalAlloc(GMEM_MOVEABLE, (UIntPtr)bytes);
-            if (hGlobal == IntPtr.Zero) return false;
+            nint hGlobal = GlobalAlloc(GMEM_MOVEABLE, (nuint)bytes);
+            if (hGlobal == nint.Zero) return false;
 
-            IntPtr target = GlobalLock(hGlobal);
-            if (target == IntPtr.Zero) return false;
+            nint target = GlobalLock(hGlobal);
+            if (target == nint.Zero) return false;
 
             try
             {
@@ -127,7 +156,7 @@ public class TrayService
                 GlobalUnlock(hGlobal);
             }
 
-            return SetClipboardData(CF_UNICODETEXT, hGlobal) != IntPtr.Zero;
+            return SetClipboardData(CF_UNICODETEXT, hGlobal) != nint.Zero;
         }
         finally
         {
