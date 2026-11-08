@@ -75,7 +75,7 @@ public static class UrlVerifier
         {
             // DNS error, timeout, TLS error, bad JSON: all mean the same, the link is not usable.
             // The message helps the user to find a typo in the address.
-            Console.WriteLine($"    [check failed] {ex.Message}");
+            AppLog.Write($"    [check failed] {ex.Message}");
             return false;
         }
         catch (OperationCanceledException)

@@ -25,9 +25,6 @@ public static class AppLog
                 _lines.RemoveAt(0);
         }
 
-        // Still print to console, useful when running from Visual Studio
-        Console.WriteLine(line);
-
         LineAdded?.Invoke(line);
     }
 

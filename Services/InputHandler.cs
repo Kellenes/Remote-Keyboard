@@ -35,7 +35,7 @@ public class InputHandler
         }
         catch (Exception ex)
         {
-            Console.WriteLine($"[Input Error] {ex.Message}");
+            AppLog.Write($"[Input Error] {ex.Message}");
         }
     }
 }

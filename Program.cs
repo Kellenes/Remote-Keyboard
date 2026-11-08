@@ -130,11 +130,9 @@ if (publicUrl == null)
 
 if (!string.IsNullOrEmpty(publicUrl))
 {
-    Console.ForegroundColor = ConsoleColor.Green;
-    AppLog.Write($"\n==========================================");
-    AppLog.Write($" Link: {publicUrl}");
-    AppLog.Write($"==========================================\n");
-    Console.ResetColor();
+    // The tray must know the link, otherwise "Copy link" has nothing to copy
+    trayService.SetUrl(publicUrl);
+    AppLog.Write($"[+] Link: {publicUrl}");
 }
 else
 {

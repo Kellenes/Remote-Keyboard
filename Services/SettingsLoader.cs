@@ -61,7 +61,7 @@ public static class SettingsLoader
         catch (Exception ex)
         {
             // A broken file must not crash the app: report and fall back to defaults
-            Console.WriteLine($"[!] Cannot read {FileName}: {ex.Message}. Using defaults.");
+            AppLog.Write($"[!] Cannot read {FileName}: {ex.Message}. Using defaults.");
             return new AppSettings();
         }
     }
@@ -74,7 +74,7 @@ public static class SettingsLoader
         if (el.ValueKind == JsonValueKind.Number && el.TryGetInt32(out var port) && port is >= 1 and <= 65535)
             return port;
 
-        Console.WriteLine($"[!] Invalid port in {FileName}, using {AppSettings.DefaultPort}");
+        AppLog.Write($"[!] Invalid port in {FileName}, using {AppSettings.DefaultPort}");
         return AppSettings.DefaultPort;
     }
 
@@ -94,7 +94,7 @@ public static class SettingsLoader
             return uri.ToString().TrimEnd('/');
         }
 
-        Console.WriteLine($"[!] Invalid publicUrl in {FileName}: \"{text}\". It must start with http:// or https://");
+        AppLog.Write($"[!] Invalid publicUrl in {FileName}: \"{text}\". It must start with http:// or https://");
         return null;
     }
 
@@ -107,7 +107,7 @@ public static class SettingsLoader
         catch (Exception ex)
         {
             // The folder may be read-only (for example Program Files): not critical
-            Console.WriteLine($"[!] Cannot create {FileName}: {ex.Message}");
+            AppLog.Write($"[!] Cannot create {FileName}: {ex.Message}");
         }
     }
 }

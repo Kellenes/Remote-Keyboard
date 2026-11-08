@@ -27,7 +27,7 @@ public class TunnelService
             int remotePort = root.GetProperty("port").GetInt32();
             int maxConn = root.TryGetProperty("max_conn", out var mc) ? mc.GetInt32() : 10;
 
-            Console.WriteLine($"[✓] Assigned remote port: {remotePort}");
+            AppLog.Write($"[✓] Assigned remote port: {remotePort}");
 
             // 2. Start maintaining a pool of connections to handle incoming requests
             _ = Task.Run(() => MaintainProxyPoolAsync(remotePort, localPort, maxConn, _cts.Token));
@@ -36,7 +36,7 @@ public class TunnelService
         }
         catch (Exception ex)
         {
-            Console.WriteLine($"[!] Failed to start tunnel: {ex.Message}");
+            AppLog.Write($"[!] Failed to start tunnel: {ex.Message}");
             return null;
         }
     }
