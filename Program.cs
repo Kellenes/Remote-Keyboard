@@ -1,5 +1,6 @@
 ﻿using System.Net.WebSockets;
 using System.Text;
+using System.Text.Json;
 using KeyboardController.Services;
 using KeyboardController.UI;
 
@@ -36,6 +37,36 @@ var app = builder.Build();
 // Enable automatic serving of index.html from the wwwroot folder
 app.UseDefaultFiles();
 app.UseStaticFiles();
+
+app.MapGet("/api/layouts", async (HttpContext context) =>
+{
+    var files = app.Environment.WebRootFileProvider.GetDirectoryContents("")
+        .Where(file => !file.IsDirectory && Path.GetExtension(file.Name).Equals(".html", StringComparison.OrdinalIgnoreCase))
+        .OrderBy(file => !file.Name.Equals("index.html", StringComparison.OrdinalIgnoreCase))
+        .ThenBy(file => file.Name, StringComparer.OrdinalIgnoreCase);
+
+    context.Response.Headers.CacheControl = "no-store";
+    context.Response.ContentType = "application/json";
+
+    // Write explicitly so layout discovery also works in the trimmed publish.
+    using (var json = new Utf8JsonWriter(context.Response.BodyWriter))
+    {
+        json.WriteStartArray();
+        foreach (var file in files)
+        {
+            json.WriteStartObject();
+            json.WriteString("file", file.Name);
+            json.WriteString("name", file.Name.Equals("index.html", StringComparison.OrdinalIgnoreCase)
+                ? "Classic"
+                : Path.GetFileNameWithoutExtension(file.Name));
+            json.WriteEndObject();
+        }
+        json.WriteEndArray();
+        json.Flush();
+    }
+
+    await context.Response.BodyWriter.FlushAsync(context.RequestAborted);
+});
 
 app.UseWebSockets(new WebSocketOptions { KeepAliveInterval = TimeSpan.FromSeconds(30) });
 

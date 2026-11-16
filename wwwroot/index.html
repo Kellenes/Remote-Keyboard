@@ -1,9 +1,11 @@
-﻿<!DOCTYPE html>
-<html lang="ru">
+<!DOCTYPE html>
+<html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Remote Controller</title>
+    <!-- Marker: the app recognizes layout pages by it. The number is the protocol version. -->
+    <meta name="kc-layout" content="1">
+    <title>Classic</title>
     <style>
         * {
             box-sizing: border-box;
@@ -40,10 +42,10 @@
             background: #e53e3e;
         }
 
-            .indicator.connected {
-                background: #38a169;
-                box-shadow: 0 0 8px #38a169;
-            }
+        .indicator.connected {
+            background: #38a169;
+            box-shadow: 0 0 8px #38a169;
+        }
 
         .container {
             width: 100%;
@@ -51,6 +53,22 @@
             display: flex;
             flex-direction: column;
             gap: 12px;
+        }
+
+        /* The dropdown with other layouts; it stays hidden until the list is loaded */
+        #layout-select {
+            width: 100%;
+            padding: 12px 14px;
+            background: #202024;
+            border: 2px solid #323238;
+            border-radius: 10px;
+            color: #fff;
+            font-size: 15px;
+            outline: none;
+        }
+
+        #layout-select[hidden] {
+            display: none;
         }
 
         .text-box-container {
@@ -61,6 +79,7 @@
 
         #text-input {
             flex: 1;
+            min-width: 0;
             padding: 12px 14px;
             background: #202024;
             border: 2px solid #323238;
@@ -72,9 +91,9 @@
             user-select: text;
         }
 
-            #text-input:focus {
-                border-color: #00b37e;
-            }
+        #text-input:focus {
+            border-color: #00b37e;
+        }
 
         .send-btn {
             padding: 0 16px;
@@ -103,6 +122,7 @@
 
         button.key {
             flex: 1;
+            min-width: 0;
             height: 52px;
             background: #202024;
             color: #e1e1e6;
@@ -117,21 +137,17 @@
             transition: background 0.05s, transform 0.05s;
         }
 
-            button.key:active, button.key.active {
-                background: #00875f;
-                border-color: #00b37e;
-                transform: translateY(2px);
-                box-shadow: 0 1px #121214;
-            }
+        button.key:active, button.key.active {
+            background: #00875f;
+            border-color: #00b37e;
+            transform: translateY(2px);
+            box-shadow: 0 1px #121214;
+        }
 
         .empty {
             flex: 1;
             height: 52px;
             visibility: hidden;
-        }
-
-        .system-key {
-            background: #29292e;
         }
     </style>
 </head>
@@ -142,35 +158,26 @@
     </div>
 
     <div class="container">
-        <form id="text-form" class="text-box-container" onsubmit="event.preventDefault(); sendText();">
+        <select id="layout-select" hidden></select>
+        <form id="text-form" class="text-box-container">
             <input type="text" id="text-input" placeholder="Enter text..." autocomplete="off">
             <button type="submit" class="send-btn">Enter</button>
         </form>
-
         <div class="grid">
             <div class="row">
-                <button class="key" data-key="INSERT">Insert</button>
-                <button class="key" data-key="HOME">Home</button>
+                <button class="key" style="flex: 1" data-key="MENU">Alt</button>
+                <button class="key" style="flex: 1" data-key="TAB">Tab</button>
+                <button class="key" style="flex: 1" data-key="ESCAPE">Esc</button>
             </div>
             <div class="row">
-                <button class="key system-key" data-key="MENU">Alt</button>
-                <button class="key system-key" data-key="TAB">Tab</button>
-                <button class="key system-key" data-key="ESCAPE">Esc</button>
+                <div class="empty" style="flex: 1"></div>
+                <button class="key" style="flex: 1" data-key="UP">▲</button>
+                <div class="empty" style="flex: 1"></div>
             </div>
             <div class="row">
-                <button class="key system-key" data-key="SHIFT">Shift</button>
-                <button class="key system-key" data-key="BACK">⌫ Back</button>
-                <button class="key system-key" data-key="RETURN">⏎ Enter</button>
-            </div>
-            <div class="row" style="margin-top: 8px;">
-                <div class="empty"></div>
-                <button class="key" data-key="UP">▲</button>
-                <div class="empty"></div>
-            </div>
-            <div class="row">
-                <button class="key" data-key="LEFT">◀</button>
-                <button class="key" data-key="DOWN">▼</button>
-                <button class="key" data-key="RIGHT">▶</button>
+                <button class="key" style="flex: 1" data-key="LEFT">◀</button>
+                <button class="key" style="flex: 1" data-key="DOWN">▼</button>
+                <button class="key" style="flex: 1" data-key="RIGHT">▶</button>
             </div>
         </div>
     </div>
@@ -178,10 +185,10 @@
     <script>
         const dot = document.getElementById('dot');
         const statusText = document.getElementById('status-text');
-        const textInput = document.getElementById('text-input');
 
         const wsProtocol = location.protocol === 'https:' ? 'wss:' : 'ws:';
-        const wsUrl = `${wsProtocol}//${location.host}/ws`;
+        // location.search carries the access token (?token=...) when the app requires one
+        const wsUrl = `${wsProtocol}//${location.host}/ws${location.search}`;
 
         let ws;
 
@@ -207,13 +214,19 @@
             }
         }
 
-        function sendText() {
-            const val = textInput.value;
-            if (!val) return;
-            if (ws && ws.readyState === WebSocket.OPEN) {
-                ws.send(JSON.stringify({ action: "text", value: val }));
-                textInput.value = '';
-            }
+        // The text line exists in the page only if it was enabled in the editor
+        const textForm = document.getElementById('text-form');
+        if (textForm) {
+            const textInput = document.getElementById('text-input');
+            textForm.addEventListener('submit', (e) => {
+                e.preventDefault();
+                const val = textInput.value;
+                if (!val) return;
+                if (ws && ws.readyState === WebSocket.OPEN) {
+                    ws.send(JSON.stringify({ action: 'text', value: val }));
+                    textInput.value = '';
+                }
+            });
         }
 
         document.querySelectorAll('.key').forEach(button => {
@@ -236,6 +249,53 @@
             button.addEventListener('mouseup', handleUp);
             button.addEventListener('mouseleave', handleUp);
         });
+
+        // Fills the dropdown with the layouts the app reports. Any failure just leaves it hidden.
+        async function loadLayouts() {
+            const select = document.getElementById('layout-select');
+            try {
+                const response = await fetch('/api/layouts' + location.search, { cache: 'no-store' });
+                // The endpoint may be missing (older app version): the page works without the dropdown
+                if (!response.ok) return;
+
+                const layouts = await response.json();
+                if (!Array.isArray(layouts) || layouts.length === 0) return;
+
+                const current = decodeURIComponent(location.pathname.split('/').pop() || 'index.html');
+                let matched = false;
+
+                for (const item of layouts) {
+                    const option = document.createElement('option');
+                    option.value = item.file;
+                    // textContent, never innerHTML: names come from file names
+                    option.textContent = item.name;
+                    if (item.file === current) {
+                        option.selected = true;
+                        matched = true;
+                    }
+                    select.appendChild(option);
+                }
+
+                if (!matched) {
+                    // No entry matches, so show a neutral first item
+                    const placeholder = document.createElement('option');
+                    placeholder.textContent = 'Choose layout...';
+                    placeholder.disabled = true;
+                    placeholder.selected = true;
+                    select.insertBefore(placeholder, select.firstChild);
+                }
+
+                select.addEventListener('change', () => {
+                    // A relative address keeps the same host; the token is carried over
+                    location.href = encodeURIComponent(select.value) + location.search;
+                });
+                select.hidden = false;
+            } catch (e) {
+                // No endpoint or no network: ignore
+            }
+        }
+
+        loadLayouts();
     </script>
 </body>
 </html>
