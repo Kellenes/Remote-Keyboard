@@ -261,7 +261,7 @@
                 const layouts = await response.json();
                 if (!Array.isArray(layouts) || layouts.length === 0) return;
 
-                const current = decodeURIComponent(location.pathname.split('/').pop() || 'index.html');
+                const current = decodeURIComponent(location.pathname.split('/').pop());
                 let matched = false;
 
                 for (const item of layouts) {

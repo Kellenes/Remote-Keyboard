@@ -34,17 +34,47 @@ builder.WebHost.UseUrls($"http://127.0.0.1:{port}");
 
 var app = builder.Build();
 
-// Enable automatic serving of index.html from the wwwroot folder
-app.UseDefaultFiles();
+IEnumerable<string> GetLayoutFiles() =>
+    app.Environment.WebRootFileProvider.GetDirectoryContents("")
+        .Where(file => !file.IsDirectory && Path.GetExtension(file.Name).Equals(".html", StringComparison.OrdinalIgnoreCase))
+        .Select(file => file.Name)
+        .OrderBy(name => name, StringComparer.OrdinalIgnoreCase);
+
+// Open an available layout from the home page or from a stale layout link.
+app.UseStatusCodePages(async statusContext =>
+{
+    var context = statusContext.HttpContext;
+    var request = context.Request;
+    string? path = request.Path.Value;
+
+    bool isLayoutPath = path is { Length: > 1 } && path.IndexOf('/', 1) < 0 &&
+        path.EndsWith(".html", StringComparison.OrdinalIgnoreCase);
+    if (context.Response.StatusCode != StatusCodes.Status404NotFound ||
+        !(HttpMethods.IsGet(request.Method) || HttpMethods.IsHead(request.Method)) ||
+        (path != "/" && !isLayoutPath))
+    {
+        return;
+    }
+
+    context.Response.Headers.CacheControl = "no-store";
+    string? firstLayout = GetLayoutFiles().FirstOrDefault();
+    if (firstLayout == null)
+    {
+        context.Response.ContentType = "text/plain; charset=utf-8";
+        if (!HttpMethods.IsHead(request.Method))
+            await context.Response.WriteAsync("No layouts found in wwwroot.", context.RequestAborted);
+        return;
+    }
+
+    var target = new PathString("/" + firstLayout);
+    if (!request.Path.Equals(target, StringComparison.OrdinalIgnoreCase))
+        context.Response.Redirect(request.PathBase + target + request.QueryString);
+});
+
 app.UseStaticFiles();
 
 app.MapGet("/api/layouts", async (HttpContext context) =>
 {
-    var files = app.Environment.WebRootFileProvider.GetDirectoryContents("")
-        .Where(file => !file.IsDirectory && Path.GetExtension(file.Name).Equals(".html", StringComparison.OrdinalIgnoreCase))
-        .OrderBy(file => !file.Name.Equals("index.html", StringComparison.OrdinalIgnoreCase))
-        .ThenBy(file => file.Name, StringComparer.OrdinalIgnoreCase);
-
     context.Response.Headers.CacheControl = "no-store";
     context.Response.ContentType = "application/json";
 
@@ -52,13 +82,11 @@ app.MapGet("/api/layouts", async (HttpContext context) =>
     using (var json = new Utf8JsonWriter(context.Response.BodyWriter))
     {
         json.WriteStartArray();
-        foreach (var file in files)
+        foreach (string file in GetLayoutFiles())
         {
             json.WriteStartObject();
-            json.WriteString("file", file.Name);
-            json.WriteString("name", file.Name.Equals("index.html", StringComparison.OrdinalIgnoreCase)
-                ? "Classic"
-                : Path.GetFileNameWithoutExtension(file.Name));
+            json.WriteString("file", file);
+            json.WriteString("name", Path.GetFileNameWithoutExtension(file));
             json.WriteEndObject();
         }
         json.WriteEndArray();
