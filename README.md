@@ -1,23 +1,22 @@
-# How to use
- 1. Start the .exe file
- 2. Wait for the local tunnel to be assigned
-  <img width="405" height="163" alt="image" src="https://github.com/user-attachments/assets/e60b8ac1-a060-40a5-8e0f-9c07087a47f3" />
-  
-3. The program will be added to system tray
-4. You can copy Link from the console or system tray
-  <img width="180" height="102" alt="image" src="https://github.com/user-attachments/assets/6a4f0b4d-f925-4db5-91a6-887dcb303ba7" />
+# Remote Keyboard
 
-5. Enter the link with any browser in your phone
-6. You may see pre-enter page, don`t be affraid
-  <img width="1218" height="921" alt="image" src="https://github.com/user-attachments/assets/ac4a8c5e-10d0-4062-a508-c0a0283bc5b0" />
+Remote Keyboard lets you press keys and send text to a Windows PC from a browser on your phone.
 
-7. Then you will enter the controller
-   <br>Enter text - paste written text on your pc if possible
-   <br>Keys correspond to given
-  <img width="410" height="434" alt="image" src="https://github.com/user-attachments/assets/73d58d23-4f81-4119-af8b-aad7ce177be5" />
+## Quick start
 
-> [!NOTE]
-> There another release if you don`t want to console be opened and stay in trackbar, app will go to system tray from start
----
-#
-# *Currently working on possibility to make custom layouts*
+1. Download and extract the Windows build. Keep the `wwwroot` folder next to `KeyboardController.exe`. [Downloads](https://github.com/Kellenes/Remote-Keyboard/releases)
+2. Run `KeyboardController.exe`. Right-click its tray icon and select **Show logs** to see the startup status.
+3. When the public link is ready, select **Copy link** in the tray menu and open it on your phone. On the PC running the app, you can also open `http://127.0.0.1:8181/`.
+4. Tap the buttons to send key presses. If the layout has a text field, type your text and press **Enter** on the page to send it.
+
+## Layouts
+
+- `wwwroot/Classic.html` is the included layout. You can rename or remove it.
+- To add a layout, save a page with the [layout editor](https://github.com/Kellenes/Remote-Keyboard-Grid-Builder) and place the `.html` file directly in `wwwroot`. Refresh the page and select the layout from the dropdown.
+- The home page opens the first layout alphabetically. A link to a removed layout goes to the first remaining one.
+
+## Settings
+
+The app creates `settings.json` next to the executable on first launch. The default local port is `8181`. Leave `publicUrl` empty to use Localtunnel, or follow the [ngrok setup guide](NGROK.md) to use your own URL. Restart the app after editing the settings.
+
+Anyone who can access the public page can send keystrokes to your PC. Keep the link private and close the app from the tray when you finish.
