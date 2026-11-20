@@ -1,6 +1,10 @@
 ﻿using System.Reflection;
 using System.Runtime.InteropServices;
+using System.ComponentModel;
+using System.Diagnostics;
+using System.Security;
 using KeyboardController.Services;
+using Microsoft.Win32;
 
 namespace KeyboardController.UI;
 
@@ -30,6 +34,8 @@ public class TrayService
 
     private const uint CF_UNICODETEXT = 13;
     private const uint GMEM_MOVEABLE = 0x0002;
+    private const string EditorRegistryKey = @"Software\RemoteKeyboard\Editor";
+    private const string EditorDownloadsUrl = "https://github.com/Kellenes/Remote-Keyboard-Grid-Builder/releases";
 
 
     private NotifyIcon? _notifyIcon;
@@ -54,10 +60,12 @@ public class TrayService
 
             var showLogsItem = new ToolStripMenuItem("Show logs", null, (_, _) => ShowLogWindow());
             var copyLinkItem = new ToolStripMenuItem("Copy link", null, (_, _) => CopyLinkToClipboard());
+            var openEditorItem = new ToolStripMenuItem("Open editor", null, (_, _) => OpenEditor());
             var exitItem = new ToolStripMenuItem("Exit", null, (_, _) => ExitApplication());
 
             contextMenu.Items.Add(showLogsItem);
             contextMenu.Items.Add(copyLinkItem);
+            contextMenu.Items.Add(openEditorItem);
             contextMenu.Items.Add(new ToolStripSeparator());
             contextMenu.Items.Add(exitItem);
 
@@ -81,6 +89,47 @@ public class TrayService
     public void SetUrl(string url)
     {
         _publicUrl = url;
+    }
+
+    private static void OpenEditor()
+    {
+        try
+        {
+            using var key = Registry.CurrentUser.OpenSubKey(EditorRegistryKey);
+            var editorPath = key?.GetValue("ExecutablePath") as string;
+
+            if (editorPath != null && Path.IsPathFullyQualified(editorPath)
+                && editorPath.EndsWith(".exe", StringComparison.OrdinalIgnoreCase)
+                && File.Exists(editorPath))
+            {
+                using var editor = Process.Start(new ProcessStartInfo(editorPath)
+                {
+                    WorkingDirectory = Path.GetDirectoryName(editorPath)!,
+                    UseShellExecute = false
+                });
+                return;
+            }
+
+            var answer = MessageBox.Show(
+                "The editor could not be found. It may not have been downloaded, may not have been run yet, or may have been moved.\n\n"
+                + "If you already have it, open it once from its current folder.\n\n"
+                + "Open the download page?",
+                "Remote Keyboard Editor", MessageBoxButtons.YesNo, MessageBoxIcon.Question,
+                MessageBoxDefaultButton.Button2);
+
+            if (answer == DialogResult.Yes)
+            {
+                using var browser = Process.Start(new ProcessStartInfo(EditorDownloadsUrl)
+                {
+                    UseShellExecute = true
+                });
+            }
+        }
+        catch (Exception ex) when (ex is Win32Exception or IOException or UnauthorizedAccessException or SecurityException)
+        {
+            AppLog.Write($"Could not open the editor or its download page: {ex.Message}");
+            MessageBox.Show(ex.Message, "Remote Keyboard Editor", MessageBoxButtons.OK, MessageBoxIcon.Error);
+        }
     }
 
     private void ShowLogWindow()
